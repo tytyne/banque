@@ -1,11 +1,12 @@
 const express=require('express');
 const{Transaction,validate}=require('../models/transaction');
 const{Account}=require('../models/account');
+const auth=require('../middleware/auth')
 const Joi =require('joi');
 const router=express.Router()
 
 
-router.post('/:_id', async(req,res)=>{
+router.post('/:_id',auth, async(req,res)=>{
     const{error}=validate(req.body);
     if(error) res.status(400).send(error.details[0].message);
 
@@ -23,15 +24,16 @@ router.post('/:_id', async(req,res)=>{
 
 });
 
-router.put('/debit/:id', async (req, res) => {
-    const { error } = validate(req.body); 
-    if (error) return res.status(400).send(error.details[0].message);
-    const accountp=await Transaction.findByIdAndUpdate({_id:req.params._id});
-    if(!accountp) return res.status(400).send('Invalid account');
-    const transaction=await Transaction.findByIdAndUpdate({_id:req.params._id});
+router.put('/:_id/debit/:id', async (req, res) => {
+    
+
+    const account=await Account.findById({_id:req.params._id});
+    if(!account) return res.status(400).send('Invalid account');
+
+    const transaction=await Transaction.findByIdAndUpdate({_id:req.params.id});
     if(!transaction) return res.status(400).send('Invalid transaction');
-    if(Transaction.transactionName == 'withdraw'&& Account.amount<=0) return res.status(400).send('insufficient amount');
-    Account.amount=parseInt(Account.amount)-parseInt(Transaction.amount);
+    if(transaction.transactionName == 'withdraw'&& transaction.amount-account.amount<=0) return res.status(400).send('insufficient amount');
+    account.amount=parseInt(account.amount)-parseInt(transaction.amount);
     await account.save()
     res.json({
         message: 'Account debited ',
@@ -39,27 +41,26 @@ router.put('/debit/:id', async (req, res) => {
     })
 });
 
-router.put('/credit/:id', async (req, res) => {
-    const { error } = validate(req.body); 
-    if (error) return res.status(400).send(error.details[0].message);
-    const accountp=await Transaction.findByIdAndUpdate({_id:req.params._id});
-    if(!accountp) return res.status(400).send('Invalid account');
-    const transaction=await Transaction.findByIdAndUpdate({_id:req.params._id});
+router.put('/:_id/credit/:id', async (req, res) => {
+    
+    const account=await Account.findById({_id:req.params._id});
+    if(!account) return res.status(400).send('Invalid account');
+
+    const transaction=await Transaction.findByIdAndUpdate({_id:req.params.id});
     if(!transaction) return res.status(400).send('Invalid transaction');
-    if(Transaction.transactionName == 'deposit');
-    Account.amount=parseInt(Account.amount)+parseInt(Transaction.amount);
+    if(transaction.transactionName == 'deposit');
+    account.amount=parseInt(account.amount) + parseInt(transaction.amount);
+    account.status='active';
     await account.save();
     res.json({
         message: 'Account credited ',
         amount: account.amount
     });
-router.put('/deactivate/:id',async(req,res)=>{
-    const { error } = validate(req.body); 
-    if (error) return res.status(400).send(error.details[0].message);
-    const account=await Transaction.findByIdAndUpdate({_id:req.params._id});
-
-
-});
+router.delete('/deactive/:_id',async(req,res)=>{
+    const account=await Account.findByIdAndRemove({_id:req.params._id});
+    if(!account) return res.status(400).send('Invalid account');
+    res.send(account);
+    
 });
 
 router.get('/one/:_id',async(req,res) => {
@@ -93,7 +94,7 @@ router.get('/one/:_id',async(req,res) => {
 //  router.update('/:_id',async(req,res)=>{
 
 
-//  });
+ });
 
 
 module.exports=router;
